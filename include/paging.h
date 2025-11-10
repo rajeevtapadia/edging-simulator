@@ -10,13 +10,18 @@
  * Assumptions:
  *    64-bit addressing space
  */
+#ifndef PAGING_H
+#define PAGING_H
 
 #include <assert.h>
+#include <stddef.h>
 #include <stdint.h>
 
-#define FRAME_SIZE 4 * 1024
+#define FRAME_SIZE (4 * 1024)
 #define PAGE_SIZE FRAME_SIZE
-static_assert((FRAME_SIZE & (FRAME_SIZE - 1)) == 0 && "FRAME_SIZE should be a power of 2\n");
+static_assert((FRAME_SIZE & (FRAME_SIZE - 1)) == 0,
+              "FRAME_SIZE should be a power of 2\n");
+static_assert(sizeof(uintptr_t) == 8, "[Error] Not 64 bit arch");
 
 /*
  * 0b0000000000000000000000000000000000000000000000000000 000000000000
@@ -26,12 +31,22 @@ static_assert((FRAME_SIZE & (FRAME_SIZE - 1)) == 0 && "FRAME_SIZE should be a po
 #define FRAME_ADDR_BITS 64 - OFFSET_BITS
 #define PAGE_ADDR_BITS 64 - OFFSET_BITS
 
+#define LOG_INFO(fmt, ...)  fprintf(stderr, "[INFO] " fmt "\n", ##__VA_ARGS__)
+#define LOG_WARN(fmt, ...)  fprintf(stderr, "[WARN] " fmt "\n", ##__VA_ARGS__)
+#define LOG_ERROR(fmt, ...) fprintf(stderr, "[ERROR] " fmt "\n", ##__VA_ARGS__)
+
 // Buffer that acts as physical memory
+struct PageTable {
+    uintptr_t *entries;
+    size_t size;
+    size_t curr;
+};
+
 extern unsigned char *phy_mem;
 /*
  * Index is page number p
  * Value at index p is frame address
  */
-extern unsigned char *page_table;
+extern struct PageTable page_table;
 
-struct Process {};
+#endif // PAGING_H
