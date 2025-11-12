@@ -17,13 +17,18 @@ static_assert(DEFAULT_MEMORY_SIZE % FRAME_SIZE == 0,
 
 unsigned char *phy_mem = NULL;
 
-struct PageTable create_page_table(size_t size) {
-    struct PageTable pt = {0};
-    pt.entries = (uintptr_t *)malloc(size * sizeof(uintptr_t));
-    pt.size = size;
-    pt.curr = 0;
-    memset(pt.entries, 0, size * sizeof(uintptr_t));
+struct PageTable *create_page_table(size_t size) {
+    struct PageTable *pt = (struct PageTable *)malloc(sizeof(struct PageTable));
+    pt->entries = (uintptr_t *)malloc(size * sizeof(uintptr_t));
+    pt->size = size;
+    pt->curr = 0;
+    memset(pt->entries, 0, size * sizeof(uintptr_t));
     return pt;
+}
+
+void destroy_page_table(struct PageTable *pt) {
+    free(pt->entries);
+    free(pt);
 }
 
 // add an entry to page table at next available place
@@ -77,28 +82,39 @@ void unmap_frame(struct PageTable *pt, size_t page_idx) {
     pt->entries[page_idx] = 0;
 }
 
+struct Proc *create_proc() {
+    struct Proc *new_proc = (struct Proc *)malloc(sizeof(struct Proc));
+    new_proc->page_table = create_page_table(DEFAULT_PAGE_TABLE_SIZE);
+    return new_proc;
+}
+
+void destroy_proc(struct Proc *proc) {
+    destroy_page_table(proc->page_table);
+    free(proc);
+}
+
 int main() {
     LOG_INFO("arch: %d bit", 8 * (int)sizeof(uintptr_t));
 
     phy_mem = malloc(DEFAULT_PAGE_TABLE_SIZE);
 
     LOG_INFO("default table size: %d pages", DEFAULT_PAGE_TABLE_SIZE);
-    struct PageTable page_table = create_page_table(DEFAULT_PAGE_TABLE_SIZE);
-    LOG_INFO("pg table: %p", page_table.entries);
+    struct Proc *proc = create_proc();
+    LOG_INFO("pg table: %p", proc->page_table->entries);
 
     while (1) {
-        size_t page_idx = map_frame(&page_table);
+        size_t page_idx = map_frame(proc->page_table);
         LOG_INFO("new page index: %zu", page_idx);
-        print_page_table(&page_table);
+        print_page_table(proc->page_table);
         usleep(1000 * 1000);
         printf("---------------------------------------------------------------------\n");
 
-        size_t page_idx2 = map_frame(&page_table);
+        size_t page_idx2 = map_frame(proc->page_table);
         LOG_INFO("new page index: %zu", page_idx2);
-        print_page_table(&page_table);
+        print_page_table(proc->page_table);
         usleep(1000 * 1000);
         // unmap_frame(&page_table, page_idx2);
-        unmap_frame(&page_table, page_idx);
+        unmap_frame(proc->page_table, page_idx);
         printf("---------------------------------------------------------------------\n");
     }
 

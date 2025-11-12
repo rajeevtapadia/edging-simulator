@@ -31,15 +31,18 @@ static_assert(sizeof(uintptr_t) == 8, "[Error] Not 64 bit arch");
 #define FRAME_ADDR_BITS 64 - OFFSET_BITS
 #define PAGE_ADDR_BITS 64 - OFFSET_BITS
 
-#define LOG_INFO(fmt, ...)  fprintf(stderr, "[INFO] " fmt "\n", ##__VA_ARGS__)
-#define LOG_WARN(fmt, ...)  fprintf(stderr, "[WARN] " fmt "\n", ##__VA_ARGS__)
+#define LOG_INFO(fmt, ...) fprintf(stderr, "[INFO] " fmt "\n", ##__VA_ARGS__)
+#define LOG_WARN(fmt, ...) fprintf(stderr, "[WARN] " fmt "\n", ##__VA_ARGS__)
 #define LOG_ERROR(fmt, ...) fprintf(stderr, "[ERROR] " fmt "\n", ##__VA_ARGS__)
 
-// Buffer that acts as physical memory
 struct PageTable {
     uintptr_t *entries;
     size_t size;
     size_t curr;
+};
+
+struct Proc {
+    struct PageTable *page_table;
 };
 
 extern unsigned char *phy_mem;
