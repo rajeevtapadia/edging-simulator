@@ -17,6 +17,7 @@ static_assert(DEFAULT_MEMORY_SIZE % FRAME_SIZE == 0,
               "DEFAULT_MEMORY_SIZE size should be divisible by FRAME_SIZE");
 
 unsigned char *phy_mem = NULL;
+size_t last_frame_id = 0;
 
 struct PageTable *create_page_table(size_t size) {
     struct PageTable *pt = (struct PageTable *)malloc(sizeof(struct PageTable));
@@ -30,19 +31,6 @@ struct PageTable *create_page_table(size_t size) {
 void destroy_page_table(struct PageTable *pt) {
     free(pt->entries);
     free(pt);
-}
-
-// add an entry to page table at next available place
-virt_addr_t add_entry_to_page_table(struct PageTable *pt, uintptr_t frame_addr) {
-    while (pt->entries[pt->curr] != 0) {
-        // TODO: detect page table full
-        pt->curr++;
-        if (pt->curr == pt->size)
-            pt->curr = 0;
-    }
-    pt->entries[pt->curr] = frame_addr;
-    virt_addr_t virt_addr = pt->curr * PAGE_SIZE;
-    return virt_addr;
 }
 
 bool is_frame_unused(struct PageTable *pt, size_t frame_idx) {
@@ -66,17 +54,28 @@ void print_page_table(struct PageTable *pt) {
     printf("\n");
 }
 
-// find a unused frame in memory and map it in page table
-virt_addr_t map_frame(struct PageTable *page_table) {
-    for (size_t frame_idx = 0; frame_idx < DEFAULT_PAGE_TABLE_SIZE; frame_idx++) {
-        if (is_frame_unused(page_table, frame_idx)) {
-            LOG_INFO("empty frame found: frame_id %zu", frame_idx);
-            uintptr_t relative_frame_addr = FRAME_SIZE * frame_idx;
-            return add_entry_to_page_table(page_table, relative_frame_addr);
+// find a unused frame and map it to given virutal address
+void map_frame_at_addr(struct PageTable *page_table, virt_addr_t virt_addr) {
+    if (virt_addr == 0) {
+        LOG_ERROR("Attempted to map guard page (0x0) to a valid physical frame");
+        return;
+    }
+
+    size_t page_idx = virt_addr / PAGE_SIZE;
+    size_t total_frames = DEFAULT_MEMORY_SIZE / FRAME_SIZE;
+
+    // TODO: Handle out of memory infinite loop
+    while (1) {
+        last_frame_id++;
+        if (last_frame_id == total_frames) {
+            last_frame_id = 0;
+        }
+
+        if (is_frame_unused(page_table, last_frame_id)) {
+            page_table->entries[page_idx] = FRAME_SIZE * last_frame_id;
+            return;
         }
     }
-    assert("[FATAL] No unused frame found. Memory is full!");
-    return 0;
 }
 
 void unmap_frame(struct PageTable *pt, virt_addr_t virt_addr) {
@@ -84,8 +83,10 @@ void unmap_frame(struct PageTable *pt, virt_addr_t virt_addr) {
     pt->entries[page_idx] = 0;
 }
 
-struct Proc *create_proc() {
+struct Proc *create_proc(char *name) {
     struct Proc *new_proc = (struct Proc *)malloc(sizeof(struct Proc));
+    new_proc->name = (char *)malloc(strlen(name));
+    memcpy(new_proc->name, name, strlen(name));
     new_proc->page_table = create_page_table(DEFAULT_PAGE_TABLE_SIZE);
     return new_proc;
 }
@@ -107,30 +108,32 @@ uintptr_t convert_virtual_addr_to_physical_addr(struct PageTable *pt,
 
 unsigned char access_memory(struct Proc *proc, virt_addr_t virt_addr) {
     size_t page_idx = virt_addr / PAGE_SIZE;
-    if (proc->page_table->entries[page_idx] != 0) {
-        // page hit
-        uintptr_t phy_addr =
-            convert_virtual_addr_to_physical_addr(proc->page_table, virt_addr);
-        return phy_mem[phy_addr];
-    } else {
-        // page fault
+
+    // check for page fault
+    if (proc->page_table->entries[page_idx] == 0) {
+        LOG_ERROR("Page fault while accessing %p", (void *)virt_addr);
+        LOG_ERROR("%s: Segmentation fault", proc->name);
+        return -1;
     }
 
+    uintptr_t phy_addr =
+        convert_virtual_addr_to_physical_addr(proc->page_table, virt_addr);
+    return phy_mem[phy_addr];
     assert("[FATAL] UNIMPLEMENTED");
     return 0;
 }
 
 void set_memory(struct Proc *proc, virt_addr_t virt_addr, unsigned char data) {
     size_t page_idx = virt_addr / PAGE_SIZE;
-    if (proc->page_table->entries[page_idx] != 0) {
-        uintptr_t phy_addr =
-            convert_virtual_addr_to_physical_addr(proc->page_table, virt_addr);
-        phy_mem[phy_addr] = data;
-        // *(unsigned char *)phy_addr = data;
-    } else {
-        // page fault
-        assert("[FATAL] UNIMPLEMENTED");
+
+    // check for page fault
+    if (proc->page_table->entries[page_idx] == 0) {
+        map_frame_at_addr(proc->page_table, virt_addr);
     }
+
+    uintptr_t phy_addr =
+        convert_virtual_addr_to_physical_addr(proc->page_table, virt_addr);
+    phy_mem[phy_addr] = data;
 }
 
 int main() {
@@ -139,34 +142,26 @@ int main() {
     phy_mem = malloc(DEFAULT_PAGE_TABLE_SIZE);
 
     LOG_INFO("default table size: %d pages", DEFAULT_PAGE_TABLE_SIZE);
-    struct Proc *proc = create_proc();
+    struct Proc *proc = create_proc("proc 1");
     LOG_INFO("pg table: %p", proc->page_table->entries);
 
-    // while (1) {
-    for (int i = 0; i < 2; i++) {
-        size_t page_idx = map_frame(proc->page_table);
-        LOG_INFO("new page index: %zu", page_idx);
-        print_page_table(proc->page_table);
-        usleep(1000 * 1000);
-        printf("---------------------------------------------------------------------\n");
-
-        size_t page_idx2 = map_frame(proc->page_table);
-        LOG_INFO("new page index: %zu", page_idx2);
-        print_page_table(proc->page_table);
-        usleep(1000 * 1000);
-        // unmap_frame(&page_table, page_idx2);
-        // unmap_frame(proc->page_table, page_idx);
-        printf("---------------------------------------------------------------------\n");
-    }
 
     uintptr_t test_addr = 0x1FFF;
+    print_page_table(proc->page_table);
+    printf("---------------------------------------------------------------------\n");
+
     char *str = "ligma balls";
     for (size_t i = 0; i < strlen(str); i++)
         set_memory(proc, test_addr + i, str[i]);
 
+    print_page_table(proc->page_table);
     for (size_t i = 0; i < strlen(str); i++)
         printf("%c ", access_memory(proc, test_addr + i));
     printf("\n");
+
+    // try to read invalid memory
+    access_memory(proc, 0x696969);
+
     destroy_proc(proc);
     proc = NULL;
 

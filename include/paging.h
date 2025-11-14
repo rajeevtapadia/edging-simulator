@@ -44,6 +44,7 @@ struct PageTable {
 };
 
 struct Proc {
+    char* name;
     struct PageTable *page_table;
 };
 
