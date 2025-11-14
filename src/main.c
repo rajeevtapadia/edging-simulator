@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #define DEFAULT_MEMORY_SIZE (1024 * 1024) // 1MB
@@ -32,7 +33,7 @@ void destroy_page_table(struct PageTable *pt) {
 }
 
 // add an entry to page table at next available place
-size_t add_entry_to_page_table(struct PageTable *pt, uintptr_t frame_addr) {
+virt_addr_t add_entry_to_page_table(struct PageTable *pt, uintptr_t frame_addr) {
     while (pt->entries[pt->curr] != 0) {
         // TODO: detect page table full
         pt->curr++;
@@ -40,7 +41,8 @@ size_t add_entry_to_page_table(struct PageTable *pt, uintptr_t frame_addr) {
             pt->curr = 0;
     }
     pt->entries[pt->curr] = frame_addr;
-    return pt->curr;
+    virt_addr_t virt_addr = pt->curr * PAGE_SIZE;
+    return virt_addr;
 }
 
 bool is_frame_unused(struct PageTable *pt, size_t frame_idx) {
@@ -65,20 +67,20 @@ void print_page_table(struct PageTable *pt) {
 }
 
 // find a unused frame in memory and map it in page table
-size_t map_frame(struct PageTable *page_table) {
+virt_addr_t map_frame(struct PageTable *page_table) {
     for (size_t frame_idx = 0; frame_idx < DEFAULT_PAGE_TABLE_SIZE; frame_idx++) {
         if (is_frame_unused(page_table, frame_idx)) {
             LOG_INFO("empty frame found: frame_id %zu", frame_idx);
             uintptr_t relative_frame_addr = FRAME_SIZE * frame_idx;
-            size_t pt_idx = add_entry_to_page_table(page_table, relative_frame_addr);
-            return pt_idx;
+            return add_entry_to_page_table(page_table, relative_frame_addr);
         }
     }
     assert("[FATAL] No unused frame found. Memory is full!");
     return 0;
 }
 
-void unmap_frame(struct PageTable *pt, size_t page_idx) {
+void unmap_frame(struct PageTable *pt, virt_addr_t virt_addr) {
+    size_t page_idx = virt_addr / PAGE_SIZE;
     pt->entries[page_idx] = 0;
 }
 
@@ -93,6 +95,44 @@ void destroy_proc(struct Proc *proc) {
     free(proc);
 }
 
+uintptr_t convert_virtual_addr_to_physical_addr(struct PageTable *pt,
+                                                virt_addr_t virt_addr) {
+    size_t page_idx = virt_addr / PAGE_SIZE;
+    assert(pt->entries[page_idx] != 0 && "[FATAL] Invalid page");
+
+    uintptr_t frame_addr = pt->entries[page_idx];
+    uintptr_t offset = virt_addr & (PAGE_SIZE - 1);
+    return frame_addr + offset;
+}
+
+unsigned char access_memory(struct Proc *proc, virt_addr_t virt_addr) {
+    size_t page_idx = virt_addr / PAGE_SIZE;
+    if (proc->page_table->entries[page_idx] != 0) {
+        // page hit
+        uintptr_t phy_addr =
+            convert_virtual_addr_to_physical_addr(proc->page_table, virt_addr);
+        return phy_mem[phy_addr];
+    } else {
+        // page fault
+    }
+
+    assert("[FATAL] UNIMPLEMENTED");
+    return 0;
+}
+
+void set_memory(struct Proc *proc, virt_addr_t virt_addr, unsigned char data) {
+    size_t page_idx = virt_addr / PAGE_SIZE;
+    if (proc->page_table->entries[page_idx] != 0) {
+        uintptr_t phy_addr =
+            convert_virtual_addr_to_physical_addr(proc->page_table, virt_addr);
+        phy_mem[phy_addr] = data;
+        // *(unsigned char *)phy_addr = data;
+    } else {
+        // page fault
+        assert("[FATAL] UNIMPLEMENTED");
+    }
+}
+
 int main() {
     LOG_INFO("arch: %d bit", 8 * (int)sizeof(uintptr_t));
 
@@ -102,7 +142,8 @@ int main() {
     struct Proc *proc = create_proc();
     LOG_INFO("pg table: %p", proc->page_table->entries);
 
-    while (1) {
+    // while (1) {
+    for (int i = 0; i < 2; i++) {
         size_t page_idx = map_frame(proc->page_table);
         LOG_INFO("new page index: %zu", page_idx);
         print_page_table(proc->page_table);
@@ -114,9 +155,20 @@ int main() {
         print_page_table(proc->page_table);
         usleep(1000 * 1000);
         // unmap_frame(&page_table, page_idx2);
-        unmap_frame(proc->page_table, page_idx);
+        // unmap_frame(proc->page_table, page_idx);
         printf("---------------------------------------------------------------------\n");
     }
+
+    uintptr_t test_addr = 0x1FFF;
+    char *str = "ligma balls";
+    for (size_t i = 0; i < strlen(str); i++)
+        set_memory(proc, test_addr + i, str[i]);
+
+    for (size_t i = 0; i < strlen(str); i++)
+        printf("%c ", access_memory(proc, test_addr + i));
+    printf("\n");
+    destroy_proc(proc);
+    proc = NULL;
 
     return 0;
 }

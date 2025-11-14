@@ -35,6 +35,8 @@ static_assert(sizeof(uintptr_t) == 8, "[Error] Not 64 bit arch");
 #define LOG_WARN(fmt, ...) fprintf(stderr, "[WARN] " fmt "\n", ##__VA_ARGS__)
 #define LOG_ERROR(fmt, ...) fprintf(stderr, "[ERROR] " fmt "\n", ##__VA_ARGS__)
 
+typedef uintptr_t virt_addr_t;
+
 struct PageTable {
     uintptr_t *entries;
     size_t size;
