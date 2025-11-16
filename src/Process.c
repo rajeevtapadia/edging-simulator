@@ -1,0 +1,57 @@
+#include <paging.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+struct Proc *create_proc(char *name) {
+    struct Proc *new_proc = (struct Proc *)malloc(sizeof(struct Proc));
+    new_proc->name = (char *)malloc(strlen(name));
+    memcpy(new_proc->name, name, strlen(name));
+    new_proc->page_table = create_page_table(DEFAULT_PAGE_TABLE_SIZE);
+    return new_proc;
+}
+
+void destroy_proc(struct Proc *proc) {
+    destroy_page_table(proc->page_table);
+    free(proc);
+}
+
+uintptr_t convert_virtual_addr_to_physical_addr(struct PageTable *pt,
+                                                virt_addr_t virt_addr) {
+    size_t page_idx = virt_addr / PAGE_SIZE;
+    assert(pt->entries[page_idx] != 0 && "[FATAL] Invalid page");
+
+    uintptr_t frame_addr = pt->entries[page_idx];
+    uintptr_t offset = virt_addr & (PAGE_SIZE - 1);
+    return frame_addr + offset;
+}
+
+unsigned char access_memory(struct Proc *proc, virt_addr_t virt_addr) {
+    size_t page_idx = virt_addr / PAGE_SIZE;
+
+    // check for page fault
+    if (proc->page_table->entries[page_idx] == 0) {
+        LOG_ERROR("Page fault while accessing %p", (void *)virt_addr);
+        LOG_ERROR("%s: Segmentation fault", proc->name);
+        return -1;
+    }
+
+    uintptr_t phy_addr =
+        convert_virtual_addr_to_physical_addr(proc->page_table, virt_addr);
+    return phy_mem[phy_addr];
+    assert("[FATAL] UNIMPLEMENTED");
+    return 0;
+}
+
+void set_memory(struct Proc *proc, virt_addr_t virt_addr, unsigned char data) {
+    size_t page_idx = virt_addr / PAGE_SIZE;
+
+    // check for page fault
+    if (proc->page_table->entries[page_idx] == 0) {
+        map_frame_at_addr(proc->page_table, virt_addr);
+    }
+
+    uintptr_t phy_addr =
+        convert_virtual_addr_to_physical_addr(proc->page_table, virt_addr);
+    phy_mem[phy_addr] = data;
+}
