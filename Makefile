@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -ggdb -I./include/ -MMD -MP
-LDFLAGS =
+LDFLAGS = -lraylib -lm
 TARGET = build/main.out
 
 SRC = $(wildcard src/*.c)

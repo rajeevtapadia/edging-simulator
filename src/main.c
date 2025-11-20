@@ -34,6 +34,8 @@ int main() {
     // try to read invalid memory
     access_memory(proc, 0x696969);
 
+    multi_process_visualisation(proc, proc);
+
     destroy_proc(proc);
     proc = NULL;
 

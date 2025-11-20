@@ -14,9 +14,9 @@
 #define PAGING_H
 
 #include <assert.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdbool.h>
 
 #define FRAME_SIZE (4 * 1024)
 #define PAGE_SIZE FRAME_SIZE
@@ -48,7 +48,7 @@ struct PageTable {
 };
 
 struct Proc {
-    char* name;
+    char *name;
     struct PageTable *page_table;
 };
 
@@ -66,5 +66,8 @@ struct PageTable *create_page_table(size_t size);
 void destroy_page_table(struct PageTable *pt);
 void print_page_table(struct PageTable *pt);
 void map_frame_at_addr(struct PageTable *page_table, virt_addr_t virt_addr);
+
+// visualisation.c
+void multi_process_visualisation(struct Proc *_proc1, struct Proc *_proc2);
 
 #endif // PAGING_H
