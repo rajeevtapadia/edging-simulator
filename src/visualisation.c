@@ -12,6 +12,7 @@
 
 #define TOP_PADDING 80
 #define LEFT_PADDING 150
+#define RIGHT_PADDING 150
 
 #define NORMAL_LINE_THICKNESS 2
 
@@ -93,12 +94,24 @@ void draw_arrow_head(Vector2 arrow_start, Vector2 arrow_end) {
     DrawTriangle(arrow_end, (Vector2){x1, y1}, (Vector2){x2, y2}, BOX_BOUNDRY_COLOR);
 }
 
-void draw_arrow(size_t page_idx, size_t frame_idx) {
+void draw_arrow_from_proc1(size_t page_idx, size_t frame_idx) {
     Vector2 arrow_start, arrow_end;
     arrow_start.x = LEFT_PADDING + BOX_WIDTH;
     arrow_start.y = TOP_PADDING + (page_idx * BOX_HEIGHT) + BOX_HEIGHT / 2.f;
 
     arrow_end.x = width / 2.f - BOX_WIDTH / 2.f;
+    arrow_end.y = TOP_PADDING + (frame_idx * BOX_HEIGHT) + BOX_HEIGHT / 2.f;
+
+    DrawLineEx(arrow_start, arrow_end, NORMAL_LINE_THICKNESS, BOX_BOUNDRY_COLOR);
+    draw_arrow_head(arrow_start, arrow_end);
+}
+
+void draw_arrow_from_proc2(size_t page_idx, size_t frame_idx) {
+    Vector2 arrow_start, arrow_end;
+    arrow_start.x = width - RIGHT_PADDING - BOX_WIDTH;
+    arrow_start.y = TOP_PADDING + (page_idx * BOX_HEIGHT) + BOX_HEIGHT / 2.f;
+
+    arrow_end.x = width / 2.f + BOX_WIDTH / 2.f;
     arrow_end.y = TOP_PADDING + (frame_idx * BOX_HEIGHT) + BOX_HEIGHT / 2.f;
 
     DrawLineEx(arrow_start, arrow_end, NORMAL_LINE_THICKNESS, BOX_BOUNDRY_COLOR);
@@ -121,14 +134,14 @@ void render_loop() {
         for (size_t i = 0; i < sim_page_size; i++) {
             if (proc1->page_table->entries[i] != 0) {
                 size_t frame_idx = proc1->page_table->entries[i] >> 12;
-                draw_arrow(i, frame_idx);
+                draw_arrow_from_proc1(i, frame_idx);
             }
         }
 
         for (size_t i = 0; i < sim_page_size; i++) {
             if (proc1->page_table->entries[i] != 0) {
                 size_t frame_idx = proc2->page_table->entries[i] >> 12;
-                // draw_arrow(i, frame_idx);
+                draw_arrow_from_proc2(i, frame_idx);
             }
         }
 
