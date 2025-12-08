@@ -12,32 +12,17 @@ size_t last_frame_id = 0;
 int main() {
     LOG_INFO("arch: %d bit", 8 * (int)sizeof(uintptr_t));
 
-    phy_mem = malloc(DEFAULT_PAGE_TABLE_SIZE);
+    phy_mem = malloc(DEFAULT_MEMORY_SIZE);
 
     LOG_INFO("default table size: %d pages", DEFAULT_PAGE_TABLE_SIZE);
-    struct Proc *proc = create_proc("proc 1");
-    LOG_INFO("pg table: %p", proc->page_table->entries);
+    struct Proc *proc1 = create_proc("proc 1");
+    struct Proc *proc2 = create_proc("proc 2");
 
-    uintptr_t test_addr = 0x1FFF;
-    print_page_table(proc->page_table);
-    printf("---------------------------------------------------------------------\n");
+    multi_process_visualisation(proc1, proc2);
 
-    char *str = "ligma balls";
-    for (size_t i = 0; i < strlen(str); i++)
-        set_memory(proc, test_addr + i, str[i]);
-
-    print_page_table(proc->page_table);
-    for (size_t i = 0; i < strlen(str); i++)
-        printf("%c ", access_memory(proc, test_addr + i));
-    printf("\n");
-
-    // try to read invalid memory
-    access_memory(proc, 0x696969);
-
-    multi_process_visualisation(proc, proc);
-
-    destroy_proc(proc);
-    proc = NULL;
+    destroy_proc(proc1);
+    destroy_proc(proc2);
+    free(phy_mem);
 
     return 0;
 }

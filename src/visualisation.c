@@ -3,6 +3,8 @@
 #include <raylib.h>
 #include <stddef.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #define SCREEN_WIDTH 16
 #define SCREEN_HEIGHT 9
@@ -31,6 +33,23 @@ Color BOX_BOUNDRY_COLOR = (Color){135, 135, 135, 255};
 static struct Proc *proc1 = NULL;
 static struct Proc *proc2 = NULL;
 
+enum Action { READ, WRITE, UNMAP };
+
+struct Operation {
+    enum Action action;
+    struct Proc *proc;
+    unsigned char data;
+    virt_addr_t virt_addr;
+};
+
+struct TestCase {
+    struct Operation *ops;
+    size_t operation_count;
+    size_t curr_operation_idx;
+};
+
+static struct TestCase test_case;
+
 void draw_page_table(struct Proc *proc, size_t offset_x) {
     int font_size = 20;
     int offset_y = TOP_PADDING;
@@ -41,7 +60,7 @@ void draw_page_table(struct Proc *proc, size_t offset_x) {
                          .width = BOX_WIDTH};
         DrawRectangleLinesEx(rec, NORMAL_LINE_THICKNESS, BOX_BOUNDRY_COLOR);
 
-        char buf[20];
+        char buf[40];
         sprintf(buf, "%zu: %p", i, (void *)proc->page_table->entries[i]);
         DrawText(buf, offset_x + 10,
                  i * BOX_HEIGHT + BOX_HEIGHT / 2 - font_size / 2 + offset_y, font_size,
@@ -118,12 +137,61 @@ void draw_arrow_from_proc2(size_t page_idx, size_t frame_idx) {
     draw_arrow_head(arrow_start, arrow_end);
 }
 
+void perform_operation(struct Operation *op) {
+    switch (op->action) {
+    case WRITE:
+        set_memory(op->proc, op->virt_addr, op->data);
+        break;
+    case READ:
+        access_memory(op->proc, op->virt_addr);
+        break;
+    case UNMAP:
+        break;
+
+    default:
+        assert("Invalid action");
+    }
+}
+
+void print_operation(struct Operation *op) {
+    switch (op->action) {
+    case WRITE:
+        printf(">> Action: WRITE, ");
+        printf("data: %c, at %p, ", op->data, (void *)op->virt_addr);
+        break;
+    case READ:
+        printf(">> Action: READ, ");
+        printf("at %p, ", (void *)op->virt_addr);
+        break;
+    case UNMAP:
+        printf(">> Action: UNMAP, ");
+        printf("addr: %p, ", (void *)op->virt_addr);
+        break;
+
+    default:
+        assert("Invalid action");
+    }
+    printf("by proc: %s\n", op->proc->name);
+}
+
+void next_operation() {
+    if (IsKeyReleased(KEY_N) &&
+        test_case.curr_operation_idx < test_case.operation_count) {
+        LOG_INFO("curr_operation_idx %zu", test_case.curr_operation_idx);
+        print_operation(&test_case.ops[test_case.curr_operation_idx]);
+        perform_operation(&test_case.ops[test_case.curr_operation_idx]);
+        test_case.curr_operation_idx++;
+    }
+}
+
 void render_loop() {
     while (!WindowShouldClose()) {
         BeginDrawing();
         ClearBackground(BG_COLOR);
         DrawText("Multi-Process Physical Memory Access", 380, width / 64, 40,
                  TITLE_COLOR);
+
+        next_operation();
 
         size_t left_padding = LEFT_PADDING;
         size_t right_padding = width - left_padding - BOX_WIDTH;
@@ -139,7 +207,7 @@ void render_loop() {
         }
 
         for (size_t i = 0; i < sim_page_size; i++) {
-            if (proc1->page_table->entries[i] != 0) {
+            if (proc2->page_table->entries[i] != 0) {
                 size_t frame_idx = proc2->page_table->entries[i] >> 12;
                 draw_arrow_from_proc2(i, frame_idx);
             }
@@ -157,10 +225,61 @@ void init_visualsation() {
     CloseWindow();
 }
 
+void create_test_case_1() {
+    test_case.curr_operation_idx = 0;
+
+    test_case.ops = (struct Operation *)malloc(sizeof(struct Operation) * 20);
+
+    int i = 0;
+
+    // proc1 writes to pages (causing page faults)
+    test_case.ops[i++] = (struct Operation){
+        .action = WRITE, .proc = proc1, .data = 'A', .virt_addr = 0x1000};
+    test_case.ops[i++] = (struct Operation){
+        .action = WRITE, .proc = proc1, .data = 'B', .virt_addr = 0x2000};
+
+    // proc1 reads what it wrote
+    test_case.ops[i++] =
+        (struct Operation){.action = READ, .proc = proc1, .virt_addr = 0x1000};
+    test_case.ops[i++] =
+        (struct Operation){.action = READ, .proc = proc1, .virt_addr = 0x2000};
+
+    // proc2 creates independent pages
+    test_case.ops[i++] = (struct Operation){
+        .action = WRITE, .proc = proc2, .data = 'X', .virt_addr = 0x1000};
+    test_case.ops[i++] = (struct Operation){
+        .action = WRITE, .proc = proc2, .data = 'Y', .virt_addr = 0x4000};
+
+    // proc2 reads
+    test_case.ops[i++] =
+        (struct Operation){.action = READ, .proc = proc2, .virt_addr = 0x1000};
+
+    // Switch back to proc1 - check page table isolation
+    test_case.ops[i++] =
+        (struct Operation){.action = READ, .proc = proc1, .virt_addr = 0x1000};
+
+    // Two processes touching the same virtual address (0x3000)
+    test_case.ops[i++] = (struct Operation){
+        .action = WRITE, .proc = proc1, .data = 'C', .virt_addr = 0x3000};
+    test_case.ops[i++] = (struct Operation){
+        .action = WRITE, .proc = proc2, .data = 'Z', .virt_addr = 0x3000};
+    test_case.ops[i++] =
+        (struct Operation){.action = READ, .proc = proc1, .virt_addr = 0x3000};
+    test_case.ops[i++] =
+        (struct Operation){.action = READ, .proc = proc2, .virt_addr = 0x3000};
+
+    // TODO: add UNMAP cases
+
+    test_case.operation_count = i;
+}
+
 void multi_process_visualisation(struct Proc *_proc1, struct Proc *_proc2) {
-    (void)_proc2;
     proc1 = _proc1;
     proc2 = _proc2;
 
+    create_test_case_1();
+
     init_visualsation();
+
+    free(test_case.ops);
 }
