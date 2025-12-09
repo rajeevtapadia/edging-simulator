@@ -10,13 +10,15 @@
 #define SCREEN_HEIGHT 9
 
 #define BOX_WIDTH 130
-#define BOX_HEIGHT 80
+#define BOX_HEIGHT 60
 
 #define TOP_PADDING 80
 #define LEFT_PADDING 150
 #define RIGHT_PADDING 150
 
 #define NORMAL_LINE_THICKNESS 2
+
+#define DIVIDER_POS 700
 
 const int factor = 100;
 int width = SCREEN_WIDTH * factor;
@@ -56,7 +58,7 @@ void draw_page_table(struct Proc *proc, size_t offset_x) {
     for (size_t i = 0; i < sim_page_size; i++) {
         Rectangle rec = {.x = offset_x,
                          .y = i * BOX_HEIGHT + offset_y,
-                         .height = BOX_HEIGHT,
+                         .height = BOX_HEIGHT + NORMAL_LINE_THICKNESS,
                          .width = BOX_WIDTH};
         DrawRectangleLinesEx(rec, NORMAL_LINE_THICKNESS, BOX_BOUNDRY_COLOR);
 
@@ -75,7 +77,7 @@ void draw_physical_memory() {
     for (size_t i = 0; i < sim_frame_count; i++) {
         Rectangle rec = {.x = offset_x,
                          .y = i * BOX_HEIGHT + offset_y,
-                         .height = BOX_HEIGHT,
+                         .height = BOX_HEIGHT + NORMAL_LINE_THICKNESS,
                          .width = BOX_WIDTH};
         DrawRectangleLinesEx(rec, 2, BOX_BOUNDRY_COLOR);
 
@@ -137,6 +139,57 @@ void draw_arrow_from_proc2(size_t page_idx, size_t frame_idx) {
     draw_arrow_head(arrow_start, arrow_end);
 }
 
+char *action_to_str(enum Action action) {
+    switch (action) {
+    case WRITE:
+        return "WRITE";
+    case READ:
+        return "READ";
+    case UNMAP:
+        return "UNMAP";
+
+    default:
+        assert("Invalid action");
+    }
+    return NULL;
+}
+
+void operation_to_str(struct Operation *op, size_t idx, char *buf, size_t size) {
+    struct Proc *proc = op->proc;
+    char action[10];
+    strcpy(action, action_to_str(op->action));
+
+    // format: "3 - proc 2: WRITE 0xFF to 0x1000"
+    if (op->action == WRITE) {
+        snprintf(buf, size, "%zu - %s: %s 0x%X to %p", idx, proc->name, action, op->data,
+                 (void *)op->virt_addr);
+    } else {
+        snprintf(buf, size, "%zu - %s: %s %p", idx, proc->name, action,
+                 (void *)op->virt_addr);
+    }
+}
+
+void draw_text_section() {
+    DrawText(".text", 30, DIVIDER_POS, 20, TITLE_COLOR);
+    int range_start = test_case.curr_operation_idx - 2;
+    int range_end = range_start + 6;
+
+    for (int i = range_start; i <= range_end; i++) {
+        if (i < 0 || i >= (int)test_case.operation_count) {
+            continue;
+        }
+        int x_offset = 30;
+        int y_offset = DIVIDER_POS + abs(range_start - i - 1) * 30;
+
+        if (i == (int)test_case.curr_operation_idx) {
+            DrawText("> ", 15, y_offset, 20, TITLE_COLOR);
+        }
+        char buf[60];
+        operation_to_str(&test_case.ops[i], i, buf, 60);
+        DrawText(buf, x_offset, y_offset, 20, TEXT_COLOR);
+    }
+}
+
 void perform_operation(struct Operation *op) {
     switch (op->action) {
     case WRITE:
@@ -184,6 +237,12 @@ void next_operation() {
     }
 }
 
+void draw_divider() {
+    Vector2 divider_start = (Vector2){0, DIVIDER_POS};
+    Vector2 divider_end = (Vector2){GetScreenWidth(), DIVIDER_POS};
+    DrawLineEx(divider_start, divider_end, NORMAL_LINE_THICKNESS, BOX_BOUNDRY_COLOR);
+}
+
 void render_loop() {
     while (!WindowShouldClose()) {
         BeginDrawing();
@@ -212,6 +271,9 @@ void render_loop() {
                 draw_arrow_from_proc2(i, frame_idx);
             }
         }
+
+        draw_divider();
+        draw_text_section();
 
         EndDrawing();
     }
