@@ -1,6 +1,7 @@
 #include <math.h>
 #include <paging.h>
 #include <raylib.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -50,7 +51,14 @@ struct TestCase {
     size_t curr_operation_idx;
 };
 
+struct GuiState {
+    size_t page_table_idx;
+    struct Proc *selected_proc;
+    bool is_selected;
+};
+
 static struct TestCase test_case;
+static struct GuiState gui_state;
 
 void draw_page_table(struct Proc *proc, size_t offset_x) {
     int font_size = 20;
@@ -67,6 +75,15 @@ void draw_page_table(struct Proc *proc, size_t offset_x) {
         DrawText(buf, offset_x + 10,
                  i * BOX_HEIGHT + BOX_HEIGHT / 2 - font_size / 2 + offset_y, font_size,
                  TEXT_COLOR);
+    }
+
+    // draw different color box for selected cell
+    if (gui_state.is_selected && strcmp(gui_state.selected_proc->name, proc->name) == 0) {
+        Rectangle rec = {.x = offset_x,
+                         .y = gui_state.page_table_idx * BOX_HEIGHT + offset_y,
+                         .height = BOX_HEIGHT + NORMAL_LINE_THICKNESS,
+                         .width = BOX_WIDTH};
+        DrawRectangleLinesEx(rec, NORMAL_LINE_THICKNESS, GREEN);
     }
 }
 
@@ -243,6 +260,32 @@ void draw_divider() {
     DrawLineEx(divider_start, divider_end, NORMAL_LINE_THICKNESS, BOX_BOUNDRY_COLOR);
 }
 
+size_t page_table_idx_at_cursor() {
+    // TODO: implement
+    return 1;
+}
+
+struct Proc *proc_at_cursor() {
+    // TODO: implement
+    return proc1;
+}
+
+void mouse_click_handler() {
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        size_t idx = page_table_idx_at_cursor();
+        // TODO: compare procs with pid
+        struct Proc *selected_proc = proc_at_cursor();
+        if (gui_state.is_selected && gui_state.selected_proc == selected_proc &&
+            gui_state.page_table_idx == idx) {
+            gui_state.is_selected = false;
+        } else {
+            gui_state.page_table_idx = idx;
+            gui_state.selected_proc = selected_proc;
+            gui_state.is_selected = true;
+        }
+    }
+}
+
 void render_loop() {
     while (!WindowShouldClose()) {
         BeginDrawing();
@@ -274,6 +317,8 @@ void render_loop() {
 
         draw_divider();
         draw_text_section();
+
+        mouse_click_handler();
 
         EndDrawing();
     }
