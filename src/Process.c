@@ -1,11 +1,13 @@
 #include <assert.h>
 #include <paging.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 struct Proc *create_proc(char *name) {
     struct Proc *new_proc = (struct Proc *)malloc(sizeof(struct Proc));
+    new_proc->pid = (size_t)new_proc & 0xFFFF;
     new_proc->name = (char *)malloc(strlen(name) + 1);
     strcpy(new_proc->name, name);
     new_proc->page_table = create_page_table(DEFAULT_PAGE_TABLE_SIZE);
@@ -56,4 +58,8 @@ void set_memory(struct Proc *proc, virt_addr_t virt_addr, unsigned char data) {
     uintptr_t phy_addr =
         convert_virtual_addr_to_physical_addr(proc->page_table, virt_addr);
     phy_mem[phy_addr] = data;
+}
+
+bool is_proc_same(struct Proc *proc1, struct Proc *proc2) {
+    return proc1->pid == proc2->pid;
 }

@@ -78,7 +78,7 @@ void draw_page_table(struct Proc *proc, size_t offset_x) {
     }
 
     // draw different color box for selected cell
-    if (gui_state.is_selected && strcmp(gui_state.selected_proc->name, proc->name) == 0) {
+    if (gui_state.is_selected && is_proc_same(gui_state.selected_proc, proc)) {
         Rectangle rec = {.x = offset_x,
                          .y = gui_state.page_table_idx * BOX_HEIGHT + offset_y,
                          .height = BOX_HEIGHT + NORMAL_LINE_THICKNESS,
@@ -273,9 +273,9 @@ struct Proc *proc_at_cursor() {
 void mouse_click_handler() {
     if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
         size_t idx = page_table_idx_at_cursor();
-        // TODO: compare procs with pid
         struct Proc *selected_proc = proc_at_cursor();
-        if (gui_state.is_selected && gui_state.selected_proc == selected_proc &&
+        if (gui_state.is_selected &&
+            is_proc_same(gui_state.selected_proc, selected_proc) &&
             gui_state.page_table_idx == idx) {
             gui_state.is_selected = false;
         } else {

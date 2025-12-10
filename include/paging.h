@@ -49,6 +49,7 @@ struct PageTable {
 
 struct Proc {
     char *name;
+    size_t pid;
     struct PageTable *page_table;
 };
 
@@ -60,6 +61,7 @@ struct Proc *create_proc(char *name);
 void destroy_proc(struct Proc *proc);
 void set_memory(struct Proc *proc, virt_addr_t virt_addr, unsigned char data);
 unsigned char access_memory(struct Proc *proc, virt_addr_t virt_addr);
+bool is_proc_same(struct Proc *proc1, struct Proc *proc2);
 
 // PageTable.c
 struct PageTable *create_page_table(size_t size);
