@@ -260,23 +260,62 @@ void draw_divider() {
     DrawLineEx(divider_start, divider_end, NORMAL_LINE_THICKNESS, BOX_BOUNDRY_COLOR);
 }
 
-size_t page_table_idx_at_cursor() {
-    // TODO: implement
-    return 1;
+// get page table index the cursor is pointing to for left process
+int page_table_idx_at_cursor_left() {
+    float x = GetMouseX();
+    float y = GetMouseY();
+
+    // checks if cursor is outside the page table
+    if (x < LEFT_PADDING || x > LEFT_PADDING + BOX_WIDTH) {
+        return -1;
+    }
+    if (y < TOP_PADDING || y > TOP_PADDING + BOX_HEIGHT * sim_page_size) {
+        return -1;
+    }
+
+    return (y - TOP_PADDING) / BOX_HEIGHT;
+}
+
+// get page table index the cursor is pointing to for right process
+int page_table_idx_at_cursor_right() {
+    float x = GetMouseX();
+    float y = GetMouseY();
+    size_t left_padding = width - LEFT_PADDING - BOX_WIDTH;
+
+    // checks if cursor is outside the page table
+    if (x < left_padding || x > left_padding + BOX_WIDTH) {
+        return -1;
+    }
+    if (y < TOP_PADDING || y > TOP_PADDING + BOX_HEIGHT * sim_page_size) {
+        return -1;
+    }
+
+    return (y - TOP_PADDING) / BOX_HEIGHT;
+}
+
+int page_table_idx_at_cursor() {
+    if (GetMouseX() < GetScreenWidth() / 2.f) {
+        return page_table_idx_at_cursor_left();
+    } else {
+        return page_table_idx_at_cursor_right();
+    }
 }
 
 struct Proc *proc_at_cursor() {
-    // TODO: implement
-    return proc1;
+    float mouse_x = GetMouseX();
+    return (mouse_x < GetScreenWidth() / 2.f ? proc1 : proc2);
 }
 
 void mouse_click_handler() {
     if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-        size_t idx = page_table_idx_at_cursor();
+        int idx = page_table_idx_at_cursor();
+        if (idx == -1) {
+            return;
+        }
         struct Proc *selected_proc = proc_at_cursor();
         if (gui_state.is_selected &&
             is_proc_same(gui_state.selected_proc, selected_proc) &&
-            gui_state.page_table_idx == idx) {
+            gui_state.page_table_idx == (size_t)idx) {
             gui_state.is_selected = false;
         } else {
             gui_state.page_table_idx = idx;
