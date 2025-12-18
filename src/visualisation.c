@@ -52,14 +52,14 @@ struct TestCase {
     size_t curr_operation_idx;
 };
 
-struct GuiState {
+struct FocusCtx {
     size_t page_table_idx;
-    struct Proc *selected_proc;
+    struct Proc *proc;
     bool is_selected;
 };
 
 static struct TestCase test_case;
-static struct GuiState gui_state;
+static struct FocusCtx focus;
 
 void draw_page_table(struct Proc *proc, size_t offset_x) {
     int font_size = 20;
@@ -79,9 +79,9 @@ void draw_page_table(struct Proc *proc, size_t offset_x) {
     }
 
     // draw different color box for selected cell
-    if (gui_state.is_selected && is_proc_same(gui_state.selected_proc, proc)) {
+    if (focus.is_selected && is_proc_same(focus.proc, proc)) {
         Rectangle rec = {.x = offset_x,
-                         .y = gui_state.page_table_idx * BOX_HEIGHT + offset_y,
+                         .y = focus.page_table_idx * BOX_HEIGHT + offset_y,
                          .height = BOX_HEIGHT + NORMAL_LINE_THICKNESS,
                          .width = BOX_WIDTH};
         DrawRectangleLinesEx(rec, NORMAL_LINE_THICKNESS, GREEN);
@@ -254,14 +254,14 @@ void next_operation_handler() {
         test_case.curr_operation_idx++;
     }
 
-    if (IsKeyReleased(KEY_SPACE) && gui_state.is_selected) {
-        struct PageTable *selected_pt = gui_state.selected_proc->page_table;
+    if (IsKeyReleased(KEY_SPACE) && focus.is_selected) {
+        struct PageTable *selected_pt = focus.proc->page_table;
 
         // decide if page will be mapped or unmapped
-        if (selected_pt->entries[gui_state.page_table_idx] == 0) {
-            set_memory(gui_state.selected_proc, gui_state.page_table_idx << 12, 0xFF);
+        if (selected_pt->entries[focus.page_table_idx] == 0) {
+            set_memory(focus.proc, focus.page_table_idx << 12, 0xFF);
         } else {
-            unmap_page_by_page_idx(selected_pt, gui_state.page_table_idx);
+            unmap_page_by_page_idx(selected_pt, focus.page_table_idx);
         }
     }
 }
@@ -324,15 +324,18 @@ void mouse_click_handler() {
         if (idx == -1) {
             return;
         }
-        struct Proc *selected_proc = proc_at_cursor();
-        if (gui_state.is_selected &&
-            is_proc_same(gui_state.selected_proc, selected_proc) &&
-            gui_state.page_table_idx == (size_t)idx) {
-            gui_state.is_selected = false;
+        if (idx == 0) {
+            LOG_WARN("Mapping guard page not allowed");
+            return;
+        }
+        struct Proc *proc = proc_at_cursor();
+        if (focus.is_selected && is_proc_same(focus.proc, proc) &&
+            focus.page_table_idx == (size_t)idx) {
+            focus.is_selected = false;
         } else {
-            gui_state.page_table_idx = idx;
-            gui_state.selected_proc = selected_proc;
-            gui_state.is_selected = true;
+            focus.page_table_idx = idx;
+            focus.proc = proc;
+            focus.is_selected = true;
         }
     }
 }
@@ -434,6 +437,8 @@ void create_test_case_1() {
 void multi_process_visualisation(struct Proc *_proc1, struct Proc *_proc2) {
     proc1 = _proc1;
     proc2 = _proc2;
+    proc1->page_table->size = sim_page_size;
+    proc2->page_table->size = sim_page_size;
 
     create_test_case_1();
 
