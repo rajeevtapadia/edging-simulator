@@ -217,6 +217,7 @@ void perform_operation(struct Operation *op) {
         access_memory(op->proc, op->virt_addr);
         break;
     case UNMAP:
+        unmap_page_by_virtual_addr(op->proc->page_table, op->virt_addr);
         break;
 
     default:
@@ -248,7 +249,6 @@ void print_operation(struct Operation *op) {
 void next_operation_handler() {
     if (IsKeyReleased(KEY_N) &&
         test_case.curr_operation_idx < test_case.operation_count) {
-        LOG_INFO("curr_operation_idx %zu", test_case.curr_operation_idx);
         print_operation(&test_case.ops[test_case.curr_operation_idx]);
         perform_operation(&test_case.ops[test_case.curr_operation_idx]);
         test_case.curr_operation_idx++;
@@ -429,7 +429,10 @@ void create_test_case_1() {
     test_case.ops[i++] =
         (struct Operation){.action = READ, .proc = proc2, .virt_addr = 0x3000};
 
-    // TODO: add UNMAP cases
+    test_case.ops[i++] =
+        (struct Operation){.action = UNMAP, .proc = proc1, .virt_addr = 0x1000};
+    test_case.ops[i++] =
+        (struct Operation){.action = UNMAP, .proc = proc1, .virt_addr = 0x2000};
 
     test_case.operation_count = i;
 }
