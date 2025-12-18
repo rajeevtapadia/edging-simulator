@@ -68,6 +68,8 @@ struct PageTable *create_page_table(size_t size);
 void destroy_page_table(struct PageTable *pt);
 void print_page_table(struct PageTable *pt);
 void map_frame_at_addr(struct PageTable *page_table, virt_addr_t virt_addr);
+void unmap_page_by_virtual_addr(struct PageTable *pt, virt_addr_t virt_addr);
+void unmap_page_by_page_idx(struct PageTable *pt, size_t page_idx);
 
 // visualisation.c
 void multi_process_visualisation(struct Proc *_proc1, struct Proc *_proc2);

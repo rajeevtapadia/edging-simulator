@@ -3,6 +3,7 @@
 #include <raylib.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -244,13 +245,24 @@ void print_operation(struct Operation *op) {
     printf("by proc: %s\n", op->proc->name);
 }
 
-void next_operation() {
+void next_operation_handler() {
     if (IsKeyReleased(KEY_N) &&
         test_case.curr_operation_idx < test_case.operation_count) {
         LOG_INFO("curr_operation_idx %zu", test_case.curr_operation_idx);
         print_operation(&test_case.ops[test_case.curr_operation_idx]);
         perform_operation(&test_case.ops[test_case.curr_operation_idx]);
         test_case.curr_operation_idx++;
+    }
+
+    if (IsKeyReleased(KEY_SPACE) && gui_state.is_selected) {
+        struct PageTable *selected_pt = gui_state.selected_proc->page_table;
+
+        // decide if page will be mapped or unmapped
+        if (selected_pt->entries[gui_state.page_table_idx] == 0) {
+            set_memory(gui_state.selected_proc, gui_state.page_table_idx << 12, 0xFF);
+        } else {
+            unmap_page_by_page_idx(selected_pt, gui_state.page_table_idx);
+        }
     }
 }
 
@@ -332,7 +344,7 @@ void render_loop() {
         DrawText("Multi-Process Physical Memory Access", 380, width / 64, 40,
                  TITLE_COLOR);
 
-        next_operation();
+        next_operation_handler();
 
         size_t left_padding = LEFT_PADDING;
         size_t right_padding = width - left_padding - BOX_WIDTH;

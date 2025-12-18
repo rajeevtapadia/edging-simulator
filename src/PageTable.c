@@ -1,4 +1,5 @@
 #include <paging.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -56,13 +57,20 @@ void map_frame_at_addr(struct PageTable *page_table, virt_addr_t virt_addr) {
         }
 
         if (is_frame_unused(page_table, last_frame_id)) {
-            page_table->entries[page_idx] = FRAME_SIZE * last_frame_id;
+            uintptr_t phy_addr = FRAME_SIZE * last_frame_id;
+            // zero out a frame before mapping it
+            memset(&phy_mem[phy_addr], 0, PAGE_SIZE);
+            page_table->entries[page_idx] = phy_addr;
             return;
         }
     }
 }
 
-void unmap_frame(struct PageTable *pt, virt_addr_t virt_addr) {
+void unmap_page_by_virtual_addr(struct PageTable *pt, virt_addr_t virt_addr) {
     size_t page_idx = virt_addr / PAGE_SIZE;
+    unmap_page_by_page_idx(pt, page_idx);
+}
+
+void unmap_page_by_page_idx(struct PageTable *pt, size_t page_idx) {
     pt->entries[page_idx] = 0;
 }
