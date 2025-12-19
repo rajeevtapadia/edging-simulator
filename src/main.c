@@ -8,11 +8,13 @@ static_assert(DEFAULT_MEMORY_SIZE % FRAME_SIZE == 0,
 
 unsigned char *phy_mem = NULL;
 size_t last_frame_id = 0;
+struct ExecLog *exec_log = NULL;
 
 int main() {
     LOG_INFO("arch: %d bit", 8 * (int)sizeof(uintptr_t));
 
     phy_mem = malloc(DEFAULT_MEMORY_SIZE);
+    exec_log = create_exec_log();
 
     LOG_INFO("default table size: %d pages", DEFAULT_PAGE_TABLE_SIZE);
     struct Proc *proc1 = create_proc("proc 1");
@@ -22,6 +24,7 @@ int main() {
 
     destroy_proc(proc1);
     destroy_proc(proc2);
+    destroy_exec_log(exec_log);
     free(phy_mem);
 
     return 0;

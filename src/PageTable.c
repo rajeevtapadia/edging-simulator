@@ -71,6 +71,12 @@ void unmap_page_by_virtual_addr(struct PageTable *pt, virt_addr_t virt_addr) {
     unmap_page_by_page_idx(pt, page_idx);
 }
 
+// TODO: Bad API design, these functions are not supposed to be called directly
+// NEED a prcess level abstraction for these
+// also then it would be possible to log the process in the entry
 void unmap_page_by_page_idx(struct PageTable *pt, size_t page_idx) {
     pt->entries[page_idx] = 0;
+
+    struct ExecLogEntry entry = {.action = UNMAP, .virt_addr = page_idx * PAGE_SIZE};
+    push_to_exec_log(exec_log, entry);
 }

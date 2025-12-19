@@ -37,8 +37,6 @@ Color BOX_BOUNDRY_COLOR = (Color){135, 135, 135, 255};
 static struct Proc *proc1 = NULL;
 static struct Proc *proc2 = NULL;
 
-enum Action { READ, WRITE, UNMAP };
-
 struct Operation {
     enum Action action;
     struct Proc *proc;
@@ -263,6 +261,10 @@ void next_operation_handler() {
         } else {
             unmap_page_by_page_idx(selected_pt, focus.page_table_idx);
         }
+    }
+
+    if (IsKeyReleased(KEY_L)) {
+        print_exec_stack(exec_log);
     }
 }
 

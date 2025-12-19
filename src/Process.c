@@ -33,6 +33,7 @@ unsigned char access_memory(struct Proc *proc, virt_addr_t virt_addr) {
     assert(proc != NULL);
     assert(proc->page_table != NULL);
 
+    struct ExecLogEntry entry = {0};
     size_t page_idx = virt_addr / PAGE_SIZE;
 
     // check for segmentation fault
@@ -42,21 +43,40 @@ unsigned char access_memory(struct Proc *proc, virt_addr_t virt_addr) {
         return -1;
     }
 
+    entry.action = READ;
+    entry.virt_addr = virt_addr;
+    entry.proc = proc;
+    push_to_exec_log(exec_log, entry);
+
     uintptr_t phy_addr =
         convert_virtual_addr_to_physical_addr(proc->page_table, virt_addr);
     return phy_mem[phy_addr];
 }
 
 void set_memory(struct Proc *proc, virt_addr_t virt_addr, unsigned char data) {
+    assert(proc != NULL);
+    assert(proc->page_table != NULL);
+
+    struct ExecLogEntry entry = {0};
     size_t page_idx = virt_addr / PAGE_SIZE;
 
     // check for page fault
     if (proc->page_table->entries[page_idx] == 0) {
         map_frame_at_addr(proc->page_table, virt_addr);
+        entry.did_map = true;
     }
 
     uintptr_t phy_addr =
         convert_virtual_addr_to_physical_addr(proc->page_table, virt_addr);
+
+    // Maintain a log of the opeartion for rollback
+    entry.action = WRITE;
+    entry.virt_addr = virt_addr;
+    entry.old_data = phy_mem[phy_addr];
+    entry.new_data = data;
+    entry.proc = proc;
+    push_to_exec_log(exec_log, entry);
+
     phy_mem[phy_addr] = data;
 }
 
