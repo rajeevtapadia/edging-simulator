@@ -251,6 +251,9 @@ void next_operation_handler() {
         perform_operation(&test_case.ops[test_case.curr_operation_idx]);
         test_case.curr_operation_idx++;
     }
+    if (IsKeyReleased(KEY_P)) {
+        roll_back_opearation(exec_log);
+    }
 
     if (IsKeyReleased(KEY_SPACE) && focus.is_selected) {
         struct PageTable *selected_pt = focus.proc->page_table;

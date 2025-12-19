@@ -92,10 +92,11 @@ void unmap_page_by_page_idx(struct PageTable *pt, size_t page_idx);
 // ExecLog.c
 struct ExecLog *create_exec_log();
 void push_to_exec_log(struct ExecLog *log, struct ExecLogEntry entry);
-void pop_to_exec_log(struct ExecLog *log);
+struct ExecLogEntry pop_to_exec_log(struct ExecLog *log);
 struct ExecLogEntry peek_to_exec_log(struct ExecLog *log);
 void destroy_exec_log(struct ExecLog *log);
 void print_exec_stack(struct ExecLog *log);
+void roll_back_opearation(struct ExecLog *log);
 
 // visualisation.c
 void multi_process_visualisation(struct Proc *_proc1, struct Proc *_proc2);

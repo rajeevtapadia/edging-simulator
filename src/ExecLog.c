@@ -42,10 +42,15 @@ void push_to_exec_log(struct ExecLog *log, struct ExecLogEntry entry) {
     log->stack[log->top] = entry;
 }
 
-void pop_to_exec_log(struct ExecLog *log) {
+/*
+ * Pop a entry from stack
+ * Throws a error if stack is empty
+ */
+struct ExecLogEntry pop_to_exec_log(struct ExecLog *log) {
     assert(log != NULL && "ExecLog pointer is null");
+    assert(log->top != 0 && "Stack is empty");
 
-    log->size--;
+    return log->stack[log->top--];
 }
 
 struct ExecLogEntry peek_to_exec_log(struct ExecLog *log) {
@@ -91,4 +96,30 @@ void print_exec_stack(struct ExecLog *log) {
         printf("by proc: %s\n", entry.proc->name);
     }
     LOG_INFO("-----------------------------------------------------");
+}
+
+void roll_back_opearation(struct ExecLog *log) {
+    if (log->top == -1)
+        return;
+    struct ExecLogEntry entry = pop_to_exec_log(log);
+
+    switch (entry.action) {
+    case WRITE:
+        // Triggering a write will cause a unnecessary log to get added
+        // Hence after every operation we need to pop a log entry
+        set_memory(entry.proc, entry.virt_addr, entry.old_data);
+        pop_to_exec_log(log);
+        if (entry.did_map) {
+            unmap_page_by_virtual_addr(entry.proc->page_table, entry.virt_addr);
+            pop_to_exec_log(log);
+        }
+        break;
+    case READ:
+        break;
+    case UNMAP:
+        break;
+
+    default:
+        assert("Invalid action");
+    }
 }
