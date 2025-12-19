@@ -41,6 +41,8 @@ static_assert(sizeof(uintptr_t) == 8, "[Error] Not 64 bit arch");
 
 typedef uintptr_t virt_addr_t;
 
+enum Action { READ, WRITE, UNMAP };
+
 struct PageTable {
     uintptr_t *entries;
     size_t size;
@@ -53,8 +55,24 @@ struct Proc {
     struct PageTable *page_table;
 };
 
+struct ExecLogEntry {
+    struct Proc *proc;
+    enum Action action;
+    virt_addr_t virt_addr;
+    unsigned char old_data;
+    unsigned char new_data;
+    bool did_map;
+};
+
+struct ExecLog {
+    struct ExecLogEntry *stack;
+    int top;
+    size_t size;
+};
+
 extern unsigned char *phy_mem;
 extern size_t last_frame_id;
+extern struct ExecLog *exec_log;
 
 // Process.c
 struct Proc *create_proc(char *name);
@@ -70,6 +88,14 @@ void print_page_table(struct PageTable *pt);
 void map_frame_at_addr(struct PageTable *page_table, virt_addr_t virt_addr);
 void unmap_page_by_virtual_addr(struct PageTable *pt, virt_addr_t virt_addr);
 void unmap_page_by_page_idx(struct PageTable *pt, size_t page_idx);
+
+// ExecLog.c
+struct ExecLog *create_exec_log();
+void push_to_exec_log(struct ExecLog *log, struct ExecLogEntry entry);
+void pop_to_exec_log(struct ExecLog *log);
+struct ExecLogEntry peek_to_exec_log(struct ExecLog *log);
+void destroy_exec_log(struct ExecLog *log);
+void print_exec_stack(struct ExecLog *log);
 
 // visualisation.c
 void multi_process_visualisation(struct Proc *_proc1, struct Proc *_proc2);
