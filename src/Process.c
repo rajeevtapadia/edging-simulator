@@ -16,6 +16,7 @@ struct Proc *create_proc(char *name) {
 
 void destroy_proc(struct Proc *proc) {
     destroy_page_table(proc->page_table);
+    free(proc->name);
     free(proc);
 }
 
