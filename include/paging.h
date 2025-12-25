@@ -32,7 +32,7 @@ static_assert(sizeof(uintptr_t) == 8, "[Error] Not 64 bit arch");
 #define FRAME_ADDR_BITS 64 - OFFSET_BITS
 #define PAGE_ADDR_BITS 64 - OFFSET_BITS
 
-#define DEFAULT_MEMORY_SIZE (1024 * 1024) // 1MB
+#define DEFAULT_MEMORY_SIZE (FRAME_SIZE * 10)
 #define DEFAULT_PAGE_TABLE_SIZE DEFAULT_MEMORY_SIZE / FRAME_SIZE
 
 #define LOG_INFO(fmt, ...) fprintf(stderr, "[INFO] " fmt "\n", ##__VA_ARGS__)
@@ -79,6 +79,7 @@ struct Proc *create_proc(char *name);
 void destroy_proc(struct Proc *proc);
 void set_memory(struct Proc *proc, virt_addr_t virt_addr, unsigned char data);
 unsigned char access_memory(struct Proc *proc, virt_addr_t virt_addr);
+unsigned char inspect_memory(struct Proc *proc, virt_addr_t virt_addr);
 bool is_proc_same(struct Proc *proc1, struct Proc *proc2);
 
 // PageTable.c
@@ -100,5 +101,8 @@ void roll_back_opearation(struct ExecLog *log);
 
 // visualisation.c
 void multi_process_visualisation(struct Proc *_proc1, struct Proc *_proc2);
+
+// visualisation2.c
+void memory_inspector_visualisation(struct Proc *_proc);
 
 #endif // PAGING_H

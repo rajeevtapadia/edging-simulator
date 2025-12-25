@@ -30,6 +30,7 @@ uintptr_t convert_virtual_addr_to_physical_addr(struct PageTable *pt,
     return frame_addr + offset;
 }
 
+// Standard method to read one byte of data with virtual address
 unsigned char access_memory(struct Proc *proc, virt_addr_t virt_addr) {
     assert(proc != NULL);
     assert(proc->page_table != NULL);
@@ -48,6 +49,24 @@ unsigned char access_memory(struct Proc *proc, virt_addr_t virt_addr) {
     entry.virt_addr = virt_addr;
     entry.proc = proc;
     push_to_exec_log(exec_log, entry);
+
+    uintptr_t phy_addr =
+        convert_virtual_addr_to_physical_addr(proc->page_table, virt_addr);
+    return phy_mem[phy_addr];
+}
+
+// This methods is only supposed to be used by the visulaisation to show memory dump
+// Hence it skips the logging and error handling
+unsigned char inspect_memory(struct Proc *proc, virt_addr_t virt_addr) {
+    assert(proc != NULL);
+    assert(proc->page_table != NULL);
+
+    size_t page_idx = virt_addr / PAGE_SIZE;
+
+    // check for segmentation fault
+    if (page_idx >= proc->page_table->size || proc->page_table->entries[page_idx] == 0) {
+        return 0;
+    }
 
     uintptr_t phy_addr =
         convert_virtual_addr_to_physical_addr(proc->page_table, virt_addr);

@@ -20,7 +20,8 @@ int main() {
     struct Proc *proc1 = create_proc("proc 1");
     struct Proc *proc2 = create_proc("proc 2");
 
-    multi_process_visualisation(proc1, proc2);
+    memory_inspector_visualisation(proc1);
+    // multi_process_visualisation(proc1, proc2);
 
     destroy_proc(proc1);
     destroy_proc(proc2);

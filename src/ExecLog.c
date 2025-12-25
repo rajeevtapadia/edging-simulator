@@ -48,7 +48,7 @@ void push_to_exec_log(struct ExecLog *log, struct ExecLogEntry entry) {
  */
 struct ExecLogEntry pop_to_exec_log(struct ExecLog *log) {
     assert(log != NULL && "ExecLog pointer is null");
-    assert(log->top != 0 && "Stack is empty");
+    assert(log->top > -1 && "Stack is empty");
 
     return log->stack[log->top--];
 }
