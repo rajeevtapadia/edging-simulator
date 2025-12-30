@@ -9,6 +9,7 @@ static_assert(DEFAULT_MEMORY_SIZE % FRAME_SIZE == 0,
 unsigned char *phy_mem = NULL;
 size_t last_frame_id = 0;
 struct ExecLog *exec_log = NULL;
+struct FrameDBEntry frame_db[DEFAULT_FRAME_COUNT];
 
 int main() {
     LOG_INFO("arch: %d bit", 8 * (int)sizeof(uintptr_t));
@@ -20,8 +21,8 @@ int main() {
     struct Proc *proc1 = create_proc("proc 1");
     struct Proc *proc2 = create_proc("proc 2");
 
-    memory_inspector_visualisation(proc1);
-    // multi_process_visualisation(proc1, proc2);
+    // memory_inspector_visualisation(proc1);
+    multi_process_visualisation(proc1, proc2);
 
     destroy_proc(proc1);
     destroy_proc(proc2);

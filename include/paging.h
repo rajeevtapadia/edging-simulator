@@ -32,8 +32,9 @@ static_assert(sizeof(uintptr_t) == 8, "[Error] Not 64 bit arch");
 #define FRAME_ADDR_BITS 64 - OFFSET_BITS
 #define PAGE_ADDR_BITS 64 - OFFSET_BITS
 
-#define DEFAULT_MEMORY_SIZE (FRAME_SIZE * 10)
-#define DEFAULT_PAGE_TABLE_SIZE DEFAULT_MEMORY_SIZE / FRAME_SIZE
+#define DEFAULT_FRAME_COUNT 10
+#define DEFAULT_MEMORY_SIZE (FRAME_SIZE * DEFAULT_FRAME_COUNT)
+#define DEFAULT_PAGE_TABLE_SIZE (DEFAULT_MEMORY_SIZE / FRAME_SIZE)
 
 #define LOG_INFO(fmt, ...) fprintf(stderr, "[INFO] " fmt "\n", ##__VA_ARGS__)
 #define LOG_WARN(fmt, ...) fprintf(stderr, "[WARN] " fmt "\n", ##__VA_ARGS__)
@@ -70,9 +71,16 @@ struct ExecLog {
     size_t size;
 };
 
+struct FrameDBEntry {
+    bool is_used;
+    size_t ref_count;
+    struct Proc *proc;
+};
+
 extern unsigned char *phy_mem;
 extern size_t last_frame_id;
 extern struct ExecLog *exec_log;
+extern struct FrameDBEntry frame_db[DEFAULT_FRAME_COUNT];
 
 // Process.c
 struct Proc *create_proc(char *name);

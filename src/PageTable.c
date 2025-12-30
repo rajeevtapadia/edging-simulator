@@ -1,4 +1,5 @@
 #include <paging.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -18,13 +19,9 @@ void destroy_page_table(struct PageTable *pt) {
     free(pt);
 }
 
-bool is_frame_unused(struct PageTable *pt, size_t frame_idx) {
-    for (size_t j = 0; j < pt->size; j++) {
-        if (FRAME_SIZE * frame_idx == pt->entries[j]) {
-            return false;
-        }
-    }
-    return true;
+// Lookup the global frame_db to check if a frame is unused
+bool is_frame_unused(size_t frame_idx) {
+    return !frame_db[frame_idx].is_used;
 }
 
 void print_page_table(struct PageTable *pt) {
@@ -53,11 +50,14 @@ void map_frame_at_addr(struct PageTable *page_table, virt_addr_t virt_addr) {
     while (1) {
         last_frame_id++;
         if (last_frame_id == total_frames) {
-            last_frame_id = 0;
+            last_frame_id = 1;
         }
 
-        if (is_frame_unused(page_table, last_frame_id)) {
+        if (is_frame_unused(last_frame_id)) {
             uintptr_t phy_addr = FRAME_SIZE * last_frame_id;
+            frame_db[last_frame_id] =
+                (struct FrameDBEntry){.is_used = true, .ref_count = 1};
+
             // zero out a frame before mapping it
             memset(&phy_mem[phy_addr], 0, PAGE_SIZE);
             page_table->entries[page_idx] = phy_addr;
@@ -75,7 +75,11 @@ void unmap_page_by_virtual_addr(struct PageTable *pt, virt_addr_t virt_addr) {
 // NEED a prcess level abstraction for these
 // also then it would be possible to log the process in the entry
 void unmap_page_by_page_idx(struct PageTable *pt, size_t page_idx) {
+    size_t phy_addr = pt->entries[page_idx];
     pt->entries[page_idx] = 0;
+
+    size_t frame_idx = phy_addr >> 12;
+    frame_db[frame_idx] = (struct FrameDBEntry){0};
 
     struct ExecLogEntry entry = {.action = UNMAP, .virt_addr = page_idx * PAGE_SIZE};
     push_to_exec_log(exec_log, entry);
