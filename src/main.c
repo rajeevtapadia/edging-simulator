@@ -19,13 +19,26 @@ int main() {
 
     LOG_INFO("default table size: %d pages", DEFAULT_PAGE_TABLE_SIZE);
     struct Proc *proc1 = create_proc("proc 1");
-    struct Proc *proc2 = create_proc("proc 2");
 
-    // memory_inspector_visualisation(proc1);
-    multi_process_visualisation(proc1, proc2);
+    printf("Select visualisation:\n");
+    printf("1. Two processes accessing physical memory\n");
+    printf("2. Virtual memory with memory inspector\n");
+    printf("Enter choice (1 or 2): ");
+
+    switch (getchar()) {
+    case '1':
+        struct Proc *proc2 = create_proc("proc 2");
+        multi_process_visualisation(proc1, proc2);
+        destroy_proc(proc2);
+        break;
+    case '2':
+        memory_inspector_visualisation(proc1);
+        break;
+    default:
+        printf("Invalid choice\n");
+    }
 
     destroy_proc(proc1);
-    destroy_proc(proc2);
     destroy_exec_log(exec_log);
     free(phy_mem);
 

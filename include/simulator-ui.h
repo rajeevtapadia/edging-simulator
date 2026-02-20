@@ -23,6 +23,7 @@ static const Color BG_COLOR = (Color){20, 20, 21, 255};
 static const Color TEXT_COLOR = (Color){174, 174, 209, 255};
 static const Color TITLE_COLOR = (Color){187, 157, 189, 255};
 static const Color BOX_BOUNDRY_COLOR = (Color){135, 135, 135, 255};
+static const Color HEX_RED_COLOR = (Color){201, 31, 68, 255};
 
 extern size_t sim_page_size;
 extern size_t sim_frame_count;

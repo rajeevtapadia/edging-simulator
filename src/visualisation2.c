@@ -4,7 +4,7 @@
 #include <simulator-ui.h>
 #include <stdio.h>
 
-static int viewport_offset = 0;
+static int viewport_offset = 256;
 
 static struct Proc *proc = NULL;
 
@@ -59,6 +59,7 @@ static void mouse_click_handler() {
             focus.page_table_idx = idx;
             focus.proc = proc;
             focus.is_selected = true;
+            viewport_offset = 0;
         }
     }
 }
@@ -91,7 +92,7 @@ static void draw_memory_inspector() {
             unsigned char data = inspect_memory(proc, idx + j);
             int pos_x = start_x + j * 25;
             int pos_y = start_y + i * 15;
-            DrawText(TextFormat("%02X", data), pos_x, pos_y, font_size, RED);
+            DrawText(TextFormat("%02X", data), pos_x, pos_y, font_size, HEX_RED_COLOR);
         }
     }
 
@@ -115,9 +116,9 @@ static void render_loop() {
     while (!WindowShouldClose()) {
         BeginDrawing();
         ClearBackground(BG_COLOR);
-        DrawText("Multi-Process Physical Memory Access", 380, GetScreenWidth() / 64, 40,
+
+        DrawText("Virtual memory with memory inspector", 450, GetScreenWidth() / 64, 40,
                  TITLE_COLOR);
-        DrawText(TextFormat("%d", viewport_offset), 0, 0, 30, WHITE);
 
         size_t left_padding = LEFT_PADDING;
         draw_page_table(proc, left_padding);
